@@ -1,0 +1,156 @@
+#!/bin/sh
+
+
+#
+# NAME
+#       SvnTagSync
+#
+# AUTHOR
+#       Michael Contento <michaelcontento@gmail.com>
+#
+# DATE
+#       2011-02-28
+#
+# DESC 
+#       Simple git post-receive hook to sync new tags into a SVN repository.
+#       Git configuration settings we need (or this hook refuse to do anything!):
+#       
+#       svntagsync.auth.user
+#             The user used for all svn commands
+#          
+#       svntagsync.auth.pass
+#             The password used for all svn commands
+#        
+#       svntagsync.tempdir
+#             Temporary directory where we do all the work
+#       
+#       svntagsync.tagurl
+#             The url to the tag directory of your SVN project.
+#             In the most cases that should be something like http://svn.server/tags/
+#
+# INSTALL
+#       - Copy the content of this into (.git/)hooks/post-recieve
+#       - Mark the hook as executable: chmod +x (.git/)hooks/post-receive
+#       - Configure the hook via git config (see the DESC above for details)
+#
+
+
+# Print a nice error message and exit with code 1
+#
+# Param 1: Error message
+# Example: error "my personal error message" 
+function error() 
+{
+    message=$1
+
+    echo "[SvnTagSync] ERROR: ${message}"
+    echo "[SvnTagSync] ERROR: Nothing copied to SVN!"
+    exit 1
+}
+
+
+# Read from `git config` into a new variable with proper error handling
+#
+# Param 1: Name of the variable we read into
+# Param 2: Key of the config
+# Example: gitConfig "color" "color.diff"
+#          echo $color 
+function gitConfig()
+{
+    var=$1
+    key=$2
+    value=$(git config --get ${key})
+
+    if [ $? -ne 0 ]
+    then
+        error "Please configure ${key} via git config!"
+    fi
+
+    export "${var}"="${value}"
+}
+
+
+# Runs the passed svn command with the right authentication settings and
+# everything with proper error handling
+#
+# Example: svnExec ls https://svn.server/repo
+# Special: Configure the error supression via $supressSvnErrors
+function svnExec()
+{
+    svn --non-interactive \
+        --no-auth-cache \
+        --username ${svnAuthUser} \
+        --password ${svnAuthPass} \
+        "$@" &> /dev/null
+
+    if [ $? -ne 0 ] && [ ${supressSvnErrors} -eq 0 ] 
+    then
+        error "SVN Error"
+    fi
+}
+
+
+# Main function
+#
+# Param 1: The name of the tag 
+# Param 2: If the tag should be deleted
+function main()
+{
+    tagName=$1
+    isDeleteCommit=$2
+
+    # Fetch some git config values into the locale scope
+    gitConfig "svnAuthUser" "svntagsync.auth.user"
+    gitConfig "svnAuthPass" "svntagsync.auth.pass"
+    gitConfig "svnTemp"     "svntagsync.tempdir"
+    gitConfig "svnUrl"      "svntagsync.tagurl"
+
+    # A few variables to keep the following code short and readable
+    svnTempTag="${svnTemp}/${tagName}"
+    svnUrlTag="${svnUrl}/${tagName}"
+    supressSvnErrors=0
+
+    # Delete tag if it already exists
+    supressSvnErrors=1
+    svnExec rm -m "'[SvnTagSync] Delete tag ${tagName}'" ${svnUrlTag}
+    supressSvnErrors=0
+
+    if [ ${isDeleteCommit} -eq 0 ]
+    then
+        # Checkout the tag directory (without content for speed!)
+        rm -rf ${svnTemp}
+        mkdir -p ${svnTemp}
+        svnExec checkout --depth empty ${svnUrl} ${svnTemp} 
+
+        # Create new tag 
+        mkdir ${svnTempTag}
+        git archive ${tagName} | tar -x -C ${svnTempTag}
+
+        # And commit everything
+        svnExec add ${svnTempTag}
+        svnExec commit -m "'[SvnTagSync] Create tag ${tagName}'" ${svnTempTag} 
+    fi
+
+    echo "[SvnTagSync] Tag ${tagName} succesfull synced."
+}
+
+
+IFS=" "
+read oldrev newrev refname
+
+# oldRev  newRev 
+#  0000 -> 1234: create
+#  1234 -> 5678: update
+#  1234 -> 0000: delete
+if expr "${newrev}" : '0*$' > /dev/null
+then
+    isDeleteCommit=1
+else
+    isDeleteCommit=0
+fi
+
+if [ ${refname:0:10} == "refs/tags/" ] 
+then
+    echo "[SvnTagSync] Triggered"
+    main "${refname:10}" ${isDeleteCommit}
+fi
