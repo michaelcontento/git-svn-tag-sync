@@ -1,3 +1,10 @@
+Install
+-------
+
+* Copy the content of this into `(.git/)hooks/post-recieve`
+* Mark the hook as executable: `chmod +x (.git/)hooks/post-receive`
+* Configure the hook via git config (see below for details)
+
 Configure
 ---------
 
@@ -13,13 +20,6 @@ Git configuration settings we need (or this hook refuse to do anything!):
 * __svntagsync.tagurl__
     * The url to the tag directory of your SVN project.
     * In the most cases that should be something like http://svn.server/tags/
-
-Install
--------
-
-* Copy the content of this into `(.git/)hooks/post-recieve`
-* Mark the hook as executable: `chmod +x (.git/)hooks/post-receive`
-* Configure the hook via git config (see below for details)
 
 License
 -------
