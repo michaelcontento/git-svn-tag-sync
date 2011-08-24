@@ -1,3 +1,27 @@
+Configure
+---------
+
+Simple git post-receive hook to sync new tags into a SVN repository.
+Git configuration settings we need (or this hook refuse to do anything!):
+      
+* __svntagsync.auth.user__
+    * The user used for all svn commands         
+* __svntagsync.auth.pass__
+    * The password used for all svn commands        
+* __svntagsync.tempdir__
+    * Temporary directory where we do all the work       
+* __svntagsync.tagurl__
+    * The url to the tag directory of your SVN project.
+    * In the most cases that should be something like http://svn.server/tags/
+
+Install
+-------
+
+* Copy the content of this into (.git/)hooks/post-recieve
+* Mark the hook as executable: chmod +x (.git/)hooks/post-receive
+* Configure the hook via git config (see below for details)
+
+
 License
 -------
 
