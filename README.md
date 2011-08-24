@@ -17,10 +17,9 @@ Git configuration settings we need (or this hook refuse to do anything!):
 Install
 -------
 
-* Copy the content of this into (.git/)hooks/post-recieve
-* Mark the hook as executable: chmod +x (.git/)hooks/post-receive
+* Copy the content of this into `(.git/)hooks/post-recieve`
+* Mark the hook as executable: `chmod +x (.git/)hooks/post-receive`
 * Configure the hook via git config (see below for details)
-
 
 License
 -------
